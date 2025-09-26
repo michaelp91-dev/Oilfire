@@ -1,134 +1,206 @@
-using System;
-using System.IO;
+﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 
-namespace Oilfire
+namespace RocketEngineCalculator
 {
+    /// <summary>
+    /// Represents a single row of data from the N2O_Ethanol.csv file.
+    /// This class holds the thermodynamic properties for a given O/F ratio.
+    /// </summary>
+    public class PropellantData
+    {
+        public double OF_Ratio { get; set; }
+        public double Chamber_Temp_R { get; set; }
+        public double Throat_Temp_R { get; set; }
+        public double Gamma_Chamber { get; set; }
+    }
+
+    /// <summary>
+    /// Manages loading and providing access to the propellant data from the CSV.
+    /// This class replaces the need for XLOOKUP in the C# code.
+    /// </summary>
+    public class PropellantDataService
+    {
+        private readonly List<PropellantData> _data;
+
+        public PropellantDataService(string csvFilePath)
+        {
+            _data = LoadDataFromCsv(csvFilePath);
+        }
+
+        /// <summary>
+        /// Loads the CSV file into a list of PropellantData objects.
+        /// </summary>
+        private List<PropellantData> LoadDataFromCsv(string filePath)
+        {
+            var dataList = new List<PropellantData>();
+            var lines = File.ReadAllLines(filePath).Skip(1); // Skip header
+
+            int lineNumber = 1;
+            foreach (var line in lines)
+            {
+                lineNumber++;
+                var values = line.Split(',');
+                if (values.Length >= 8)
+                {
+                    // Use TryParse for more robust error handling
+                    if (double.TryParse(values[0], NumberStyles.Any, CultureInfo.InvariantCulture, out double ofRatio) &&
+                        double.TryParse(values[1], NumberStyles.Any, CultureInfo.InvariantCulture, out double chamberTemp) &&
+                        double.TryParse(values[2], NumberStyles.Any, CultureInfo.InvariantCulture, out double throatTemp) &&
+                        double.TryParse(values[4], NumberStyles.Any, CultureInfo.InvariantCulture, out double gamma))
+                    {
+                        dataList.Add(new PropellantData
+                        {
+                            OF_Ratio = ofRatio,
+                            Chamber_Temp_R = chamberTemp,
+                            Throat_Temp_R = throatTemp,
+                            Gamma_Chamber = gamma,
+                        });
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Warning: Could not parse line {lineNumber} in {filePath}. Skipping.");
+                    }
+                }
+            }
+            return dataList;
+        }
+        
+        /// <summary>
+        /// Finds the closest data point for a given O/F ratio.
+        /// This is the C# equivalent of the XLOOKUP function used in the spreadsheet.
+        /// </summary>
+        public PropellantData FindClosest(double targetOfRatio)
+        {
+            if (_data == null || !_data.Any()) return null;
+            return _data.OrderBy(d => Math.Abs(d.OF_Ratio - targetOfRatio)).FirstOrDefault();
+        }
+    }
+
+    /// <summary>
+    /// Main class to perform the rocket engine calculations.
+    /// Each method in this class corresponds to a formula from the spreadsheet.
+    /// </summary>
+    public class RocketEngine
+    {
+        // --- INPUTS (Corresponds to cells B1-B8 in the spreadsheet) ---
+        public double Thrust { get; set; }
+        public double OF_Ratio { get; set; }
+        public double Isp { get; set; }
+        public double ChamberPressure { get; set; }
+        
+        // --- CONSTANTS ---
+        public const double GasConstantR = 65.5; // ft-lb/lb*R
+        public const double GravityConstantGc = 32.2; // ft/sec^2
+
+        // --- LOOKUP DATA ---
+        private readonly PropellantData _propellantData;
+        
+        public RocketEngine(PropellantData propellantData)
+        {
+            _propellantData = propellantData ?? throw new ArgumentNullException(nameof(propellantData));
+        }
+
+        // --- CALCULATIONS (Each method matches a formula in Equations.txt) ---
+        
+        public double GetGamma() => _propellantData.Gamma_Chamber;
+        
+        public double CalculateTotalWeightFlow() => Thrust / Isp;
+
+        public double CalculateFuelWeightFlow() => CalculateTotalWeightFlow() / (OF_Ratio + 1);
+
+        public double CalculateOxidizerWeightFlow() => CalculateTotalWeightFlow() - CalculateFuelWeightFlow();
+
+        public double GetThroatTemperature() => _propellantData.Throat_Temp_R;
+
+        public double CalculateThroatPressure() => ChamberPressure * 0.564;
+
+        public double CalculateThroatArea()
+        {
+            double wt = CalculateTotalWeightFlow();
+            double pt = CalculateThroatPressure();
+            double tt = GetThroatTemperature();
+            double gamma = GetGamma();
+            return (wt / pt) * Math.Sqrt((GasConstantR * tt) / (gamma * GravityConstantGc));
+        }
+
+        public double CalculateThroatDiameter() => Math.Sqrt(4 * CalculateThroatArea() / Math.PI);
+
+        public double CalculateChamberVolume(double lStar = 60) => lStar * CalculateThroatArea();
+        
+        public double CalculateChamberDiameter() => CalculateThroatDiameter() * 5;
+
+        public double CalculateChamberArea() => Math.PI * Math.Pow(CalculateChamberDiameter() / 2, 2);
+
+        public double CalculateChamberLength(double lStar = 60) => CalculateChamberVolume(lStar) / (1.1 * CalculateChamberArea());
+        
+        public double CalculateWallThickness() => (ChamberPressure * CalculateChamberDiameter() / 16000) * 3;
+    }
+
+    /// <summary>
+    /// The main entry point for the application.
+    /// </summary>
     class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("--- Rocket Engine System Design Calculator (SI Units) ---");
-            
-            // --- Load Propellant Data ---
-            List<PropellantData> propellantData = null;
+            Console.WriteLine("--- Rocket Engine Design Calculator (C# Version) ---");
+
             try
             {
-                string dataPath = Path.Combine("Data", "ethanol_n2o_data_si.csv");
-                Console.WriteLine($"\nLoading propellant data from: {Path.GetFullPath(dataPath)}");
-                var csvHandler = new CsvHandler();
-                propellantData = csvHandler.Load(dataPath);
+                var dataService = new PropellantDataService("N2O_Ethanol.csv");
 
-                if (!propellantData.Any()) throw new Exception("CSV file loaded, but it contains no data.");
+                double targetOfRatio = 4.5;
+                var propellantData = dataService.FindClosest(targetOfRatio);
+                if (propellantData == null)
+                {
+                    Console.WriteLine($"Error: Could not find data for O/F Ratio near {targetOfRatio}.");
+                    return;
+                }
+                
+                var engine = new RocketEngine(propellantData)
+                {
+                     Thrust = 20,
+                     ChamberPressure = 300,
+                     OF_Ratio = targetOfRatio,
+                     Isp = 302.84
+                };
 
-                var optimalData = propellantData.OrderByDescending(p => p.VacIspS).First();
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("Data loaded successfully.");
-                Console.WriteLine($"Optimal performance found at O/F Ratio: {optimalData.OfRatio:F2} with Isp: {optimalData.VacIspS:F2}s");
-                Console.ResetColor();
+                Console.WriteLine("\n--- INPUTS ---");
+                Console.WriteLine($"Target O/F Ratio: \t{engine.OF_Ratio}");
+                Console.WriteLine($"Thrust: \t\t{engine.Thrust} lbs");
+                Console.WriteLine($"Chamber Pressure: \t{engine.ChamberPressure} psi");
+                Console.WriteLine($"Specific Impulse (Isp): {engine.Isp} sec");
+
+                Console.WriteLine("\n--- LOOKUP VALUES ---");
+                Console.WriteLine($"Closest O/F Ratio Found:{propellantData.OF_Ratio}");
+                Console.WriteLine($"Gamma: \t\t\t{engine.GetGamma():F4}");
+                Console.WriteLine($"Throat Temp (Tt): \t{engine.GetThroatTemperature():F2} R");
+
+                Console.WriteLine("\n--- CALCULATED VALUES ---");
+                Console.WriteLine($"Total Weight Flow (Wt): \t{engine.CalculateTotalWeightFlow():F5} lb/sec");
+                Console.WriteLine($"Fuel Weight Flow (Wf): \t\t{engine.CalculateFuelWeightFlow():F5} lb/sec");
+                Console.WriteLine($"Oxidizer Weight Flow (Wo): \t{engine.CalculateOxidizerWeightFlow():F5} lb/sec");
+                Console.WriteLine($"Throat Pressure (Pt): \t\t{engine.CalculateThroatPressure():F2} psi");
+                Console.WriteLine($"Throat Area (At): \t\t{engine.CalculateThroatArea():F5} in^2");
+                Console.WriteLine($"Throat Diameter (Dt): \t\t{engine.CalculateThroatDiameter():F5} in");
+                Console.WriteLine($"Chamber Diameter (Dc): \t\t{engine.CalculateChamberDiameter():F5} in");
+                Console.WriteLine($"Chamber Area (Ac): \t\t{engine.CalculateChamberArea():F5} in^2");
+                Console.WriteLine($"Chamber Length (Lc): \t\t{engine.CalculateChamberLength():F5} in");
+                Console.WriteLine($"Wall Thickness (Tw): \t\t{engine.CalculateWallThickness():F5} in");
+            }
+            catch (FileNotFoundException)
+            {
+                Console.WriteLine("ERROR: The file 'N2O_Ethanol.csv' was not found. Please place it in the same directory as the program.");
             }
             catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"\nFATAL ERROR: Could not load propellant data. {ex.Message}");
-                return;
+                Console.WriteLine($"An unexpected error occurred: {ex.Message}");
             }
-
-            // --- Full System Design Sequence ---
-            try
-            {
-                // Hardcoded thrust value of 2224 N (equivalent to 500 lbf)
-                float thrustN = 2224f;
-                
-                // 1. Design the main engine chamber and nozzle
-                var engineDesigner = new EngineDesigner(thrustN, propellantData);
-                engineDesigner.Calculate();
-                
-                // 2. Design the injector based on the engine's requirements
-                var injectorDesigner = new InjectorDesigner(engineDesigner);
-                injectorDesigner.Calculate();
-
-                // 3. Design the turbopump based on the required flow rates and pressures
-                var turbopumpDesigner = new TurbopumpDesigner(engineDesigner, injectorDesigner);
-                turbopumpDesigner.Calculate();
-                
-                // 4. Design the gas generator needed to power the turbopump
-                var ggDesigner = new GasGeneratorDesigner(turbopumpDesigner);
-                ggDesigner.Calculate();
-
-                // 5. Print all results
-                PrintAllResults(engineDesigner, injectorDesigner, turbopumpDesigner, ggDesigner);
-
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"\nAn error occurred during calculation: {ex.Message}");
-                Console.ResetColor();
-            }
-
-            Console.WriteLine("\n--- End of Program ---");
-        }
-
-        private static void PrintAllResults(EngineDesigner e, InjectorDesigner i, TurbopumpDesigner t, GasGeneratorDesigner g)
-        {
-            Console.WriteLine("\n==================================================");
-            Console.WriteLine($"  COMPLETE ENGINE SYSTEM DESIGN REPORT");
-            Console.WriteLine($"  Thrust: {e.DesiredThrustN:F0} N ({e.DesiredThrustN * 0.2248:F0} lbf) | Cycle: Gas-Generator");
-            Console.WriteLine("==================================================");
-
-            // --- Main Engine ---
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n--- 1. Main Combustion Chamber & Nozzle ---");
-            Console.ResetColor();
-            Console.WriteLine($"  Chamber Pressure:    {(e.ChamberPressurePa / 1e6):F2} MPa");
-            Console.WriteLine($"  O/F Ratio:           {e.OfRatio:F2}");
-            Console.WriteLine($"  Throat Diameter:     {(e.NozzleThroatDiameterM * 1000):F2} mm");
-            Console.WriteLine($"  Chamber Diameter:    {(e.ChamberDiameterM * 1000):F2} mm");
-            Console.WriteLine($"  Chamber Length:      {(e.ChamberLengthM * 1000):F2} mm");
-            Console.WriteLine($"  Practical Wall Thickness: {(e.PracticalChamberWallThicknessM * 1000):F2} mm");
-
-            // --- Injector ---
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n--- 2. Injector Design ---");
-            Console.ResetColor();
-            Console.WriteLine($"  Pressure Drop:       {(i.PressureDropPa / 1e6):F2} MPa (~{i.InjectionPressureDropFraction:P0} of Pc)");
-            Console.WriteLine($"  Required Fuel Pressure:   {(i.RequiredFuelPressurePa / 1e6):F2} MPa");
-            Console.WriteLine($"  Required Oxidizer Pressure: {(i.RequiredOxidizerPressurePa / 1e6):F2} MPa");
-            Console.WriteLine($"  Fuel Orifices:       {i.FuelOrificeCount} x {(i.SingleFuelOrificeDiameterM * 1000):F2} mm holes");
-            Console.WriteLine($"  Oxidizer Orifices:   {i.OxidizerOrificeCount} x {(i.SingleOxidizerOrificeDiameterM * 1000):F2} mm holes");
-
-            // --- Turbopump ---
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n--- 3. Turbopump Power Requirements ---");
-            Console.ResetColor();
-            Console.WriteLine($"  Fuel Pump Power:     {(t.FuelPumpShaftPowerW / 1000):F2} kW");
-            Console.WriteLine($"  Oxidizer Pump Power: {(t.OxidizerPumpShaftPowerW / 1000):F2} kW");
-            Console.WriteLine($"  --------------------------------------");
-            Console.WriteLine($"  TOTAL TURBINE POWER: {(t.RequiredTurbinePowerW / 1000):F2} kW");
-            
-            // --- Gas Generator ---
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n--- 4. Gas Generator Flow Requirements ---");
-            Console.ResetColor();
-            Console.WriteLine($"  Turbine Inlet Temp:  {g.TurbineInletTempK:F0} K");
-            Console.WriteLine($"  Required GG Mass Flow: {g.RequiredGgMassFlowKgps:F4} kg/s");
-            Console.WriteLine($"    -> Fuel:           {g.GgFuelMassFlowKgps:F4} kg/s");
-            Console.WriteLine($"    -> Oxidizer:       {g.GgOxidizerMassFlowKgps:F4} kg/s");
-            
-            // --- System Totals ---
-            float totalFuel = e.FuelMassFlowRateKgps + g.GgFuelMassFlowKgps;
-            float totalOxidizer = e.OxidizerMassFlowRateKgps + g.GgOxidizerMassFlowKgps;
-            float totalFlow = e.TotalMassFlowRateKgps + g.RequiredGgMassFlowKgps;
-            
-            Console.ForegroundColor = ConsoleColor.Yellow;
-            Console.WriteLine("\n--- SYSTEM TOTAL PROPELLANT FLOW ---");
-            Console.ResetColor();
-            Console.WriteLine($"  Total Fuel Flow:     {totalFuel:F4} kg/s");
-            Console.WriteLine($"  Total Oxidizer Flow: {totalOxidizer:F4} kg/s");
-            Console.WriteLine($"  --------------------------------------");
-            Console.WriteLine($"  TOTAL SYSTEM FLOW:   {totalFlow:F4} kg/s");
         }
     }
 }
+
