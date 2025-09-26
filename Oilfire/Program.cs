@@ -13,9 +13,11 @@ namespace RocketEngineCalculator
     public class PropellantData
     {
         public double OF_Ratio { get; set; }
-        public double Chamber_Temp_R { get; set; }
-        public double Throat_Temp_R { get; set; }
-        public double Gamma_Chamber { get; set; }
+        public double Chamber_Pressure { get; set; }  // Pc (psia)
+        public double Chamber_Temp_R { get; set; }    // Tc (R)
+        public double Throat_Temp_R { get; set; }     // Tt (R)
+        public double Gamma_Chamber { get; set; }     // gamma
+        public double Isp { get; set; }              // Isp (s)
     }
 
     /// <summary>
@@ -43,21 +45,25 @@ namespace RocketEngineCalculator
             foreach (var line in lines)
             {
                 lineNumber++;
-                var values = line.Split(',');
+                var values = line.Split(',').Select(v => v.Trim()).ToArray();
                 if (values.Length >= 8)
                 {
                     // Use TryParse for more robust error handling
                     if (double.TryParse(values[0], NumberStyles.Any, CultureInfo.InvariantCulture, out double ofRatio) &&
-                        double.TryParse(values[1], NumberStyles.Any, CultureInfo.InvariantCulture, out double chamberTemp) &&
-                        double.TryParse(values[2], NumberStyles.Any, CultureInfo.InvariantCulture, out double throatTemp) &&
-                        double.TryParse(values[4], NumberStyles.Any, CultureInfo.InvariantCulture, out double gamma))
+                        double.TryParse(values[1], NumberStyles.Any, CultureInfo.InvariantCulture, out double pressure) &&
+                        double.TryParse(values[2], NumberStyles.Any, CultureInfo.InvariantCulture, out double isp) &&
+                        double.TryParse(values[3], NumberStyles.Any, CultureInfo.InvariantCulture, out double chamberTemp) &&
+                        double.TryParse(values[4], NumberStyles.Any, CultureInfo.InvariantCulture, out double throatTemp) &&
+                        double.TryParse(values[7], NumberStyles.Any, CultureInfo.InvariantCulture, out double gamma))
                     {
                         dataList.Add(new PropellantData
                         {
                             OF_Ratio = ofRatio,
+                            Chamber_Pressure = pressure,
                             Chamber_Temp_R = chamberTemp,
                             Throat_Temp_R = throatTemp,
                             Gamma_Chamber = gamma,
+                            Isp = isp
                         });
                     }
                     else
@@ -73,10 +79,20 @@ namespace RocketEngineCalculator
         /// Finds the closest data point for a given O/F ratio.
         /// This is the C# equivalent of the XLOOKUP function used in the spreadsheet.
         /// </summary>
-        public PropellantData FindClosest(double targetOfRatio)
+        public PropellantData FindClosest(double targetOfRatio, double targetPressure)
         {
             if (_data == null || !_data.Any()) return null;
-            return _data.OrderBy(d => Math.Abs(d.OF_Ratio - targetOfRatio)).FirstOrDefault();
+            
+            // First, find all entries with the closest O/F ratio
+            var ofMatches = _data
+                .GroupBy(d => Math.Abs(d.OF_Ratio - targetOfRatio))
+                .OrderBy(g => g.Key)
+                .First();
+            
+            // Then from those, find the one with the closest chamber pressure
+            return ofMatches
+                .OrderBy(d => Math.Abs(d.Chamber_Pressure - targetPressure))
+                .FirstOrDefault();
         }
     }
 
@@ -131,7 +147,7 @@ namespace RocketEngineCalculator
 
         public double CalculateChamberVolume(double lStar = 60) => lStar * CalculateThroatArea();
         
-        public double CalculateChamberDiameter() => CalculateThroatDiameter() * 5;
+        public double CalculateChamberDiameter() => CalculateThroatDiameter() * 3;
 
         public double CalculateChamberArea() => Math.PI * Math.Pow(CalculateChamberDiameter() / 2, 2);
 
@@ -151,20 +167,21 @@ namespace RocketEngineCalculator
 
             try
             {
-                var dataService = new PropellantDataService("N2O_Ethanol.csv");
+                var dataService = new PropellantDataService("N2O_C2H5OH.csv");
 
                 double targetOfRatio = 4.5;
-                var propellantData = dataService.FindClosest(targetOfRatio);
+                double targetPressure = 500; // psia
+                var propellantData = dataService.FindClosest(targetOfRatio, targetPressure);
                 if (propellantData == null)
                 {
-                    Console.WriteLine($"Error: Could not find data for O/F Ratio near {targetOfRatio}.");
+                    Console.WriteLine($"Error: Could not find data for O/F Ratio near {targetOfRatio} and Chamber Pressure near {targetPressure} psia.");
                     return;
                 }
                 
                 var engine = new RocketEngine(propellantData)
                 {
-                     Thrust = 20,
-                     ChamberPressure = 300,
+                     Thrust = 500,
+                     ChamberPressure = 800,
                      OF_Ratio = targetOfRatio,
                      Isp = 302.84
                 };
@@ -203,4 +220,3 @@ namespace RocketEngineCalculator
         }
     }
 }
-
