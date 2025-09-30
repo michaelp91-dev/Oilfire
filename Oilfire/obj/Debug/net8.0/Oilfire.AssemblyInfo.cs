@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Oilfire")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+e7d5e6552fb17ea2871076aec6b5262ec7cdbe4f")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6dabf7395068e62a4089c3b54f2f436c8228154f")]
 [assembly: System.Reflection.AssemblyProductAttribute("Oilfire")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Oilfire")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
