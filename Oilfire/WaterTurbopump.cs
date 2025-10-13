@@ -11,7 +11,6 @@ namespace Test
     {
         float fTargetPressureRise_PSI = 40.0f;
         float fTargetFlowRate_GPM = 10.0f;
-        float fTargetFlowRate_LBFT3 = fTargetFlowRate_GPM / 448.8f;
         float fRotationalSpeed_RPM = 15000.0f;
         float fWaterDensity_LBFT3 = 62.4f;
         float fPumpEfficiency = 0.7f;
@@ -27,6 +26,7 @@ namespace Test
 
         public void Calculate()
         {
+            float fTargetFlowRate_LBFT3 = fTargetFlowRate_GPM / 448.8f;
             m_fPressureHead = (fTargetPressureRise_PSI * 144.0f) / fWaterDensity_LBFT3;
             m_fMechanicalPower = (fTargetFlowRate_LBFT3 * fTargetPressureRise_PSI) / (1714.0f * fPumpEfficiency);
             m_fSpecificSpeed = (fRotationalSpeed_RPM * (float)Math.Sqrt(fTargetFlowRate_GPM)) / ((float)Math.Pow(m_fPressureHead, 0.75f));

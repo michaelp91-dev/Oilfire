@@ -5,7 +5,6 @@ using System.IO;
 using System.Linq;
 using PicoGK;
 using RocketEngineBuilder;
-using Leap71.ShapeKernel;
 
 try
 {
