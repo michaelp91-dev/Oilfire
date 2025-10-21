@@ -8,13 +8,13 @@ RANKINE_TO_KELVIN = 5.0 / 9.0  # Rankine to Kelvin
 PSI_TO_ATM = 14.6959 # PSI to ATM
 
 # --- Configuration ---
-OUTPUT_FILENAME = "N2O_C2H5OH.csv" # Updated output filename
+OUTPUT_FILENAME = "N2O_C3H8O.csv" # Updated output filename
 DATA_SUBFOLDER = "Data"
 DEFAULT_EPS = 40 # Default expansion ratio
 # ----------------------------------------------------
 
 # Initialize the CEA object for Ethanol and N2O
-C = CEA_Obj(oxName="N2O", fuelName="C2H5OH")
+C = CEA_Obj(oxName="N2O", fuelName="Isopropanol")
 
 # Create the data subfolder if it doesn't exist
 if not os.path.exists(DATA_SUBFOLDER):
@@ -23,7 +23,7 @@ if not os.path.exists(DATA_SUBFOLDER):
 # Full path for the output file
 output_path = os.path.join(DATA_SUBFOLDER, OUTPUT_FILENAME)
 
-mr_start = 3
+mr_start = 1
 mr_end = 6
 mr_step = 0.1
 pc_start = 100.0
