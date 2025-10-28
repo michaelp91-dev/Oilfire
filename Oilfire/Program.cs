@@ -13,11 +13,11 @@ try
     
         float fThrust = 1000.0f;
         float f_OFRatio = 4.0f;
-        float fChamberPressure = 750.0f;
+        float fChamberPressure = 500.0f;
         String Ethanol_N2O_CSV = "N2O_C2H5OH.csv";
         String Isopropanol_N2O_CSV = "N2O_C3H8O.csv";
         PropellantDataService propellantDataService = new(Isopropanol_N2O_CSV);
-
+        
         CombustionChamber oChamber = new CombustionChamber(fThrust, f_OFRatio, fChamberPressure, propellantDataService);
         oChamber.Calculate();
         oChamber.CreateCombustionChamber();

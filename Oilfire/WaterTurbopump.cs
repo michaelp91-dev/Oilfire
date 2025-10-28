@@ -88,6 +88,11 @@ namespace RocketEngineBuilder
                                         m_fShellInnerDiameter_MM / 2.0f,
                                         m_fShellInnerDiameter_MM / 2.0f,
                                         false);
+            latShellInterior.AddBeam(new(m_fShellInnerDiameter_MM / 2.0f, 0, m_fShellOuterHeight_MM),
+                                        new(m_fShellInnerDiameter_MM / 2.0f, 50.0f, m_fShellOuterHeight_MM),
+                                        m_fPortDiameter_MM / 2.0f,
+                                        m_fPortDiameter_MM / 2.0f,
+                                        false);
             Voxels voxShellInterior = new Voxels(latShellInterior);
             m_voxShell.BoolSubtract(voxShellInterior);
 
