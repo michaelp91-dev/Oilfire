@@ -177,6 +177,10 @@ namespace RocketEngineBuilder
         {
             return m_fDrillMiddleLine;
         }
+        public void Run()
+        {
+            Library.oViewer().Add(m_voxCombustionChamber);
+        }
         private float m_fFlangeOuterRadius;
         private float m_fFlangeInnerRadius;
         private float m_fRadiusToGroove;
