@@ -183,6 +183,11 @@ else
             iNumberOfHoles,
             fBoltDiameterMM
         );
+
+        Voxels voxCombustionChamber = oChamber.voxGetCombustionChamber();
+        Voxels voxFlangeWithGroove = oChamber.voxGetFlangeWithGroove();
+        Voxels voxChamberWithFlange = oChamber.voxGetCombustionChamberFlangeAssembly();
+         
         PicoGK.Library.Go(fVoxelSizeMM, oChamber.Run);
     }
     catch (Exception ex)
