@@ -167,6 +167,7 @@ namespace RocketEngineBuilder
         {
             Voxels voxAssembly = new(m_voxCombustionChamber);
             voxAssembly.BoolAdd(m_voxFlangeWithGroove);
+            m_voxAssembly = voxAssembly;
             return voxAssembly;
         }
         public float fGetFlangeOuterRadius()
@@ -179,7 +180,7 @@ namespace RocketEngineBuilder
         }
         public void Run()
         {
-            Library.oViewer().Add(m_voxCombustionChamber);
+            Library.oViewer().Add(m_voxAssembly);
         }
         private float m_fFlangeOuterRadius;
         private float m_fFlangeInnerRadius;
@@ -190,6 +191,7 @@ namespace RocketEngineBuilder
         private Voxels m_voxCombustionChamber;
         private Voxels m_voxFlangeWithGroove;
         private Voxels m_voxFlangeWOGroove;
+        private Voxels m_voxAssembly;
         private Dictionary<string, float> m_dictInputs;
     }
 }
