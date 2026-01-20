@@ -96,7 +96,8 @@ for mr in range(int(mr_start*10), int(mr_end*10)+1, int(mr_step*10)):
         # Format the values for writing, handling None
         isp_s_str = f"{isp:.2f}" if isp is not None else 'NaN'
         pc_bar_str = f"{pc:.2f}
-        pc_p
+        pc_psi_str = f"{pc_psi:.2f}
+        pt_atm_str = f"{pt_atm:.2f}
         tc_R_str = f"{temperatures[0]:.2f}" if temperatures is not None and len(temperatures) > 0 else 'NaN'
         tt_R_str = f"{temperatures[1]:.2f}" if temperatures is not None and len(temperatures) > 1 else 'NaN'
         te_R_str = f"{temperatures[2]:.2f}" if temperatures is not None and len(temperatures) > 2 else 'NaN'
@@ -108,6 +109,6 @@ for mr in range(int(mr_start*10), int(mr_end*10)+1, int(mr_step*10)):
 
         # Write the data row to the file
         with open(output_path, "a") as f:
-            f.write(f"{of:.2f},{pc},{pc_psi},{isp_s_str},{tc_R_str},{tt_R_str},{te_R_str},{mw_lbm_lbmol_str},{gamma_str},{optimal_eps_str},{pe_to_pamb_str},{pt_atm}\n")
+            f.write(f"{of:.2f},{pc_bar_str},{pc_psi_str},{isp_s_str},{tc_R_str},{tt_R_str},{te_R_str},{mw_lbm_lbmol_str},{gamma_str},{optimal_eps_str},{pe_to_pamb_str},{pt_atm_str}\n")
 
 print("Data generation complete.")
