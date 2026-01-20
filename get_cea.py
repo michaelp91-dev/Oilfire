@@ -6,6 +6,7 @@ import re
 FT_TO_M = 0.3048      # Feet to Meters
 RANKINE_TO_KELVIN = 5.0 / 9.0  # Rankine to Kelvin
 PSI_TO_ATM = 14.6959 # PSI to ATM
+BAR_TO_PSI = 14.504
 
 # --- Configuration ---
 OUTPUT_FILENAME = "N2O_C3H8O.csv" # Updated output filename
@@ -23,12 +24,12 @@ if not os.path.exists(DATA_SUBFOLDER):
 # Full path for the output file
 output_path = os.path.join(DATA_SUBFOLDER, OUTPUT_FILENAME)
 
-mr_start = 1
-mr_end = 6
+mr_start = 0.5
+mr_end = 2.5
 mr_step = 0.1
-pc_start = 100.0
-pc_end = 1000.0
-pc_step = 50.0
+pc_start = 20.0
+pc_end = 1.0
+pc_step = 70.0
 eps_opt_start = 1.0 # Define start for optimal eps search
 eps_opt_end = 10.0 # Define end for optimal eps search
 eps_opt_step = 0.1 # Define step for optimal eps search
@@ -37,18 +38,19 @@ ambient_pressure_atm = 1.0 # Assuming sea level for optimal eps
 
 with open(output_path, "w") as f:
     # Write the CSV header
-    f.write("O/F,Pc_psia,Isp_s,Tc_R,Tt_R,Te_R,MW_lbm_lbmol,Gamma,Optimal_Eps,Pe_to_Pamb\n") # Added Pe_to_Pamb column
+    f.write("O/F,Pc_psia,Pc_bar,Isp_s,Tc_R,Tt_R,Te_R,MW_lbm_lbmol,Gamma,Optimal_Eps,Pe_to_Pamb\n") # Added Pe_to_Pamb column
 
 print(f"Generating data for various O/F, Pc, and Eps and saving to {output_path}...")
 
 for mr in range(int(mr_start*10), int(mr_end*10)+1, int(mr_step*10)):
     for pc in range(int(pc_start), int(pc_end)+1, int(pc_step)):
         of = mr / 10.0
+	pc_psi = pc * BAR_TO_PSI
 
         # Calculate performance parameters for default eps
-        isp = C.get_Isp(Pc=pc, MR=of, eps=DEFAULT_EPS)
-        temperatures = C.get_Temperatures(Pc=pc, MR=of, eps=DEFAULT_EPS)
-        mole_weight, gamma = C.get_Throat_MolWt_gamma(Pc=pc, MR=of, eps=DEFAULT_EPS)
+        isp = C.get_Isp(Pc=pc_psi, MR=of, eps=DEFAULT_EPS)
+        temperatures = C.get_Temperatures(Pc=pc_psi, MR=of, eps=DEFAULT_EPS)
+        mole_weight, gamma = C.get_Throat_MolWt_gamma(Pc=pc_psi, MR=of, eps=DEFAULT_EPS)
 
         # Find optimal eps by parsing full CEA output
         optimal_eps = None
@@ -57,7 +59,7 @@ for mr in range(int(mr_start*10), int(mr_end*10)+1, int(mr_step*10)):
 
         for eps_opt in [eps_opt_start + i * eps_opt_step for i in range(int((eps_opt_end - eps_opt_start) / eps_opt_step) + 1)]:
             try:
-                full_output = C.get_full_cea_output(Pc=pc, MR=of, eps=eps_opt)
+                full_output = C.get_full_cea_output(Pc=pc_psi, MR=of, eps=eps_opt)
                 # Parse the output to find the exit pressure
                 # Look for the line starting with "P, ATM" and extract the value under the "EXIT" column
                 pe_atm = None
@@ -102,6 +104,6 @@ for mr in range(int(mr_start*10), int(mr_end*10)+1, int(mr_step*10)):
 
         # Write the data row to the file
         with open(output_path, "a") as f:
-            f.write(f"{of:.2f},{pc},{isp_s_str},{tc_R_str},{tt_R_str},{te_R_str},{mw_lbm_lbmol_str},{gamma_str},{optimal_eps_str},{pe_to_pamb_str}\n")
+            f.write(f"{of:.2f},{pc},{pc_psi},{isp_s_str},{tc_R_str},{tt_R_str},{te_R_str},{mw_lbm_lbmol_str},{gamma_str},{optimal_eps_str},{pe_to_pamb_str}\n")
 
 print("Data generation complete.")
