@@ -63,11 +63,13 @@ for mr in range(int(mr_start*10), int(mr_end*10)+1, int(mr_step*10)):
                 # Parse the output to find the exit pressure
                 # Look for the line starting with "P, ATM" and extract the value under the "EXIT" column
                 pe_atm = None
+                pt_atm = None
                 for line in full_output.splitlines():
                     if line.strip().startswith("P, ATM"):
                         values = line.split()
                         try:
                             pe_atm = float(values[4])
+                            pt_atm = float(values[3])
                             break # Found the exit pressure, no need to parse further lines
                         except ValueError:
                              pass # "EXIT" not found in headers, continue searching
@@ -104,6 +106,6 @@ for mr in range(int(mr_start*10), int(mr_end*10)+1, int(mr_step*10)):
 
         # Write the data row to the file
         with open(output_path, "a") as f:
-            f.write(f"{of:.2f},{pc},{pc_psi},{isp_s_str},{tc_R_str},{tt_R_str},{te_R_str},{mw_lbm_lbmol_str},{gamma_str},{optimal_eps_str},{pe_to_pamb_str}\n")
+            f.write(f"{of:.2f},{pc},{pc_psi},{isp_s_str},{tc_R_str},{tt_R_str},{te_R_str},{mw_lbm_lbmol_str},{gamma_str},{optimal_eps_str},{pe_to_pamb_str},{pt_atm}\n")
 
 print("Data generation complete.")
