@@ -38,7 +38,7 @@ ambient_pressure_atm = 1.0 # Assuming sea level for optimal eps
 
 with open(output_path, "w") as f:
     # Write the CSV header
-    f.write("O/F,Pc_psia,Pc_bar,Isp_s,Tc_R,Tt_R,Te_R,MW_lbm_lbmol,Gamma,Optimal_Eps,Pe_to_Pamb\n") # Added Pe_to_Pamb column
+    f.write("O/F,Pc_bar,Pc_pdia,Isp_s,Tc_R,Tt_R,Te_R,MW_lbm_lbmol,Gamma,Optimal_Eps,Pe_to_Pamb,Pt_atm\n") # Added Pe_to_Pamb column
 
 print(f"Generating data for various O/F, Pc, and Eps and saving to {output_path}...")
 
@@ -95,6 +95,8 @@ for mr in range(int(mr_start*10), int(mr_end*10)+1, int(mr_step*10)):
 
         # Format the values for writing, handling None
         isp_s_str = f"{isp:.2f}" if isp is not None else 'NaN'
+        pc_bar_str = f"{pc:.2f}
+        pc_p
         tc_R_str = f"{temperatures[0]:.2f}" if temperatures is not None and len(temperatures) > 0 else 'NaN'
         tt_R_str = f"{temperatures[1]:.2f}" if temperatures is not None and len(temperatures) > 1 else 'NaN'
         te_R_str = f"{temperatures[2]:.2f}" if temperatures is not None and len(temperatures) > 2 else 'NaN'
